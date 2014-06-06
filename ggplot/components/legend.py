@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 from matplotlib.patches import Rectangle
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, DrawingArea, HPacker, VPacker
+from collections import defaultdict
 import matplotlib.lines as mlines
 import operator
 import numpy as np
@@ -109,6 +110,23 @@ def add_legend(legend, ax):
         Specification in components.legend.py
     ax: axes
     """
+    # Group legends by column name and invert color/label mapping
+    groups = {}
+    for aesthetic in legend:
+        legend_entry = legend[aesthetic]
+        column_name = legend_entry["column_name"]
+        g = groups.get(column_name, {})
+        legend_dict = { l:c for c,l in legend_entry['dict'].items() }
+        g[aesthetic] = defaultdict(lambda : None, legend_dict)
+        groups[column_name] = g
+
+    # py3 and py2 have different sorting order in dics,
+    # so make that consistent
+    for i, column_name in enumerate(sorted(groups.keys())):
+        legend_group = groups[column_name]
+        draw_legend_group(ax, legend_group, column_name, i)
+
+
     # TODO: Implement alpha
     # It should be coupled with fill, if fill is not
     # part of the aesthetics, then with color
@@ -125,6 +143,74 @@ def add_legend(legend, ax):
 
     if remove_alpha:
         legend['alpha'] = _alpha_entry
+
+
+def draw_legend_group(ax, legends, column_name, ith_group):
+    labels = get_labels(legends)
+    colors = get_colors(legends)
+    legend_title = make_title(column_name)
+    legend_labels = [make_label(l) for l in labels]
+    none_dict = defaultdict(lambda : None)
+
+    if "shape" in legends or "size" in legends :
+        shapes = legends["shape"] if "shape" in legends else none_dict
+        sizes = legends["size"] if "size" in legends else none_dict
+        line = lambda l : make_line(colors[l], shapes[l], sizes[l])
+        legend_shapes = [line(label) for label in labels]
+
+    if "linetype" in legends :
+        linetypes = legends["linetype"]
+        legend_lines = [make_line(colors[l], linetypes[l]) for l in labels]
+
+    # If we don't have lines
+    if "linetype" not in legends and ("fill" in legends or "color" in legends) :
+        pass
+
+
+
+
+
+
+def make_shape(color, shape, size, y_offset = 10, height = 20):
+    color = color if color != None else "k" # Default value if None
+    shape = shape if shape != None else "o"
+    size = size if size != None else 20
+    viz = DrawingArea(15, height, 0, 0)
+    key = mlines.Line2D([0], [y_offset], marker=shape,
+                        markersize=size / 20., c=color)
+    viz.add_artist(key)
+    return viz
+
+
+def make_line(color, style, width = 20, y_offset = 10, height = 20):
+    color = color if color != None else "k" # Default value if None
+    style = style if style != None else "-"
+    viz = DrawingArea(30, height, 0, 0)
+    x = np.arange(0.0, width, width/3.0)
+    y = np.repeat(y_offset, x.size())
+    key = mlines.Line2D(x, y, linestyle=style, c=color)
+    viz.add_artist(key)
+    return viz
+
+
+def make_label(label, max_length = 20):
+    return TextArea(label[:max_length], textprops=dict(color="k"))
+
+
+def get_labels(legends) :
+    # All the legends are for the same column, so the labels of any will do
+    return sorted(legends.items()[0].keys())
+
+
+def get_colors(legends) :
+    if "color" in legends :
+        return legends["color"]
+    elif "fill" in legends :
+        return legends["fill"]
+    else :
+        defaultdict(lambda : None)
+
+
 
 def draw_entry(ax, legend_entry, aesthetic, ith_entry):
     children = []
