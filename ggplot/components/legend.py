@@ -2,11 +2,9 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from matplotlib.patches import Rectangle
-import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, DrawingArea, HPacker, VPacker
 from collections import defaultdict
 import matplotlib.lines as mlines
-import operator
 import numpy as np
 
 
@@ -52,17 +50,19 @@ def add_legend(legend, ax):
 
     nb_rows = 0
     nb_cols = 0
-    max_rows = 20
+    max_rows = 18
     # py3 and py2 have different sorting order in dics,
     # so make that consistent
     for i, column_name in enumerate(sorted(groups.keys())):
         legend_group = groups[column_name]
         legend_box, rows = draw_legend_group(legend_group, column_name, i)
-        anchor_legend(ax, legend_box, nb_rows, nb_cols)
+        cur_nb_rows = nb_rows
         nb_rows += rows + 1
-        if nb_rows > max(max_rows, nb_rows + 1) :
+        if nb_rows > max(max_rows, rows + 1) :
             nb_cols += 1
             nb_rows = 0
+            cur_nb_rows = 0
+        anchor_legend(ax, legend_box, cur_nb_rows, nb_cols)
 
 
 def draw_legend_group(legends, column_name, ith_group):
@@ -101,15 +101,17 @@ def draw_legend_group(legends, column_name, ith_group):
 
 
 def anchor_legend(ax, box, row, col):
-    anchored = AnchoredOffsetbox(loc=6,
-                                 child=box, pad=0.,
+    anchored = AnchoredOffsetbox(loc=2,
+                                 child=box,
+                                 pad=0.,
                                  frameon=False,
                                  #bbox_to_anchor=(0., 1.02),
                                  # Spacing goes here
                                  #bbox_to_anchor=(1, 0.8 - 0.35 * ith_group),
-                                 bbox_to_anchor=(1.01 + 0.1*col, 0.86 - 0.06*row),
+                                 #bbox_to_anchor=(1.01 + 0.1*col, 0.86 - 0.06*row),
+                                 bbox_to_anchor=(1 + 0.25*col, 1 - 0.054*row),
                                  bbox_transform=ax.transAxes,
-                                 borderpad=1.,
+                                 #borderpad=1.,
                                  )
     # Workaround for a bug in matplotlib up to 1.3.1
     # https://github.com/matplotlib/matplotlib/issues/2530
@@ -131,7 +133,7 @@ def make_shape(color, shape, size, y_offset = 10, height = 20):
     color = color if color != None else "#222222" # Default value if None
     shape = shape if shape != None else "o"
     size = size if size != None else 75
-    viz = DrawingArea(30, height, 8, 0)
+    viz = DrawingArea(30, height, 8, 1)
     key = mlines.Line2D([0], [y_offset], marker=shape,
                         markersize=size/12.0, c=color)
     viz.add_artist(key)
@@ -153,7 +155,7 @@ def make_line(color, style, width = 20, y_offset = 10, height = 20, linewidth = 
 
 def make_rect(color, size = (20,6), height = 20):
     color = color if color != None else "k" # Default value if None
-    viz = DrawingArea(30, height, 0, 0)
+    viz = DrawingArea(30, height, 0, 1)
     viz.add_artist(Rectangle((0, 6), width=size[0], height=size[1], fc=color))
     return viz
 
